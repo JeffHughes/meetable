@@ -731,6 +731,129 @@ Efficiency Optimization: Consider sorting both input arrays by start time. Then,
 Code Simplification: There's redundancy in the logic that can be simplified. Both loops do almost the same thing but in reverse. This logic can be abstracted into a function that is called twice with reversed arguments, reducing code duplication and making the code easier to maintain.
 Error Handling: Add error handling for invalid inputs, such as null or undefined arrays, or incorrectly formatted time slots.
 Type Checking: Ensure that startTime and endTime are indeed Date objects capable of invoking .getTime(). This prevents runtime errors due to invalid input types.
+
+
+function newFindOverlapsWTestData() {
+  const schedules = {
+    Person1: { availabilityStartStopTimes: ["08:00-16:30"], blockedOutTimes: ["12:00-13:00"] },
+    Person2: { availabilityStartStopTimes: ["09:00-17:00"], blockedOutTimes: ["14:30-15:00", "10:00-10:30"] }
+  };
+
+  // Array of durations to search for available slots.
+  const searchMeetingDurationMins = [15, 20, 30, 60, 45, 90];
+
+  // Sets the timeSlotDuration based on the greatest common divisor of the search durations.
+  timeSlotDuration = findGcdOfArray(searchMeetingDurationMins);
+
+  // Determines the overall availability range across all schedules.
+  const [latestStart, earliestEnd] = findOverallAvailability(schedules);
+  // Initializes the time slots based on the overall availability.
+  const slots = initializeTimeSlots(latestStart, earliestEnd);
+  // Processes each schedule to mark slots as available or blocked.
+  processIndividualSchedules(slots, schedules);
+
+  // Searches for and displays available slots for each specified duration.
+  searchMeetingDurationMins.forEach(duration => {
+    const availableSlotsForDuration = findConsecutiveAvailableSlots(slots, duration);
+    const filteredSlots = availableSlotsForDuration.filter(isStartTimeAlignedWithDisplayIncrement);
+
+    console.log(`\nFiltered available time slots for ${duration} minutes, starting every ${displayIncrement} minutes:`);
+    filteredSlots.forEach(slot => console.log(slot));
+  });
+}
+
+function isStartTimeAlignedWithDisplayIncrement(slot) {
+  const startTime = slot.split('-')[0];
+  const startMinute = convertTimeToDayMinutes(startTime);
+  return startMinute % displayIncrement === 0;
+}
+
+function gcd(a, b) {
+  while (b !== 0) {
+    let temp = b;
+    b = a % b;
+    a = temp;
+  }
+  return a;
+}
+
+function findGcdOfArray(numbers) {
+  let result = numbers[0];
+  for (let i = 1; i < numbers.length; i++) {
+    result = gcd(numbers[i], result);
+    if (result === 1) return 1;
+  }
+  return result;
+}
+
+function findConsecutiveAvailableSlots(slots, duration) {
+  let result = [];
+  let startPossible = [];
+
+  Object.entries(slots).forEach(([slotKey, slotValue]) => {
+    const slotIntKey = parseInt(slotKey);
+    if (slotValue) { // Slot is available
+      startPossible.push(slotIntKey);
+      // Clear start times that are too far back to form the required duration
+      startPossible = startPossible.filter(start => slotIntKey - start + timeSlotDuration <= duration);
+
+      if (startPossible.some(start => slotIntKey - start + timeSlotDuration === duration)) // Found a sequence with the required duration
+        result.push(`${convertDayMinutesToTime(startPossible[0])}-${convertDayMinutesToTime(slotIntKey + timeSlotDuration)}`);
+    } else // Slot is not available, reset start possibilities 
+      startPossible = [];
+  });
+
+  return [...new Set(result)]; // Ensure unique entries
+}
+
+function findOverallAvailability(schedules) {
+  let latestStart = 0;
+  let earliestEnd = 1440;
+
+  Object.values(schedules).forEach(schedule => {
+    schedule.availabilityStartStopTimes.forEach(availability => {
+      const [startMin, endMin] = convertRangeToDayMinutes(availability);
+      latestStart = Math.max(latestStart, startMin);
+      earliestEnd = Math.min(earliestEnd, endMin);
+    });
+  });
+
+  return [latestStart, earliestEnd];
+}
+
+function initializeTimeSlots(start, end) {
+  const slots = {};
+  for (let i = start; i < end; i += timeSlotDuration) slots[i] = true;
+  return slots;
+}
+
+function processIndividualSchedules(slots, schedules) {
+  Object.values(schedules).forEach(schedule => {
+    schedule.blockedOutTimes.forEach(blockTime => {
+      const [startMin, endMin] = convertRangeToDayMinutes(blockTime);
+      for (let i = startMin; i < endMin; i += timeSlotDuration)
+        if (slots.hasOwnProperty(i)) slots[i] = false;
+    });
+  });
+}
+
+function convertRangeToDayMinutes(range) {
+  const parts = range.split('-');
+  const startMin = convertTimeToDayMinutes(parts[0]);
+  const endMin = convertTimeToDayMinutes(parts[1]);
+  return [startMin, endMin];
+}
+
+function convertTimeToDayMinutes(time) {
+  const parts = time.split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+}
+
+function convertDayMinutesToTime(dayMinutes) {
+  return `${Math.floor(dayMinutes / 60).toString().padStart(2, '0')}:${(dayMinutes % 60).toString().padStart(2, '0')}`;
+}
+
+
 */
 
 // Given the available times in the meetings collection, and the availableTimes
