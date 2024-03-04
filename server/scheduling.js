@@ -718,6 +718,21 @@ function getOutsideMeetRangeTimes(userId, windowStart, windowEnd) {
   return busyTimes;
 }
 
+/*
+The use of startTimesSeen to avoid duplicate entries is a good approach, but it relies on the startTime being unique which may not always be a valid assumption. For instance, two different time slots could start at the same time but end at different times.
+Bugs/Issues:
+Potential Bug with Duplicate Detection: The method for detecting duplicates (startTimesSeen) is flawed because it only considers startTime for uniqueness. If there are two overlapping slots with the same start time but different end times, this method would incorrectly discard one of them.
+Inefficient: The algorithm is inefficient with a time complexity of O(n^2) due to nested loops, which could be problematic for large datasets.
+Improvements
+Refactor Duplicate Detection: A more reliable way to track processed time slots is needed. Instead of just the start time, consider both start and end times for identifying unique slots. This could involve creating a composite key or using a more complex structure to track processed slots.
+
+Efficiency Optimization: Consider sorting both input arrays by start time. Then, you can iterate through both arrays simultaneously in a more efficient manner, similar to the merge step in merge sort. This could potentially reduce the time complexity and improve performance.
+
+Code Simplification: There's redundancy in the logic that can be simplified. Both loops do almost the same thing but in reverse. This logic can be abstracted into a function that is called twice with reversed arguments, reducing code duplication and making the code easier to maintain.
+Error Handling: Add error handling for invalid inputs, such as null or undefined arrays, or incorrectly formatted time slots.
+Type Checking: Ensure that startTime and endTime are indeed Date objects capable of invoking .getTime(). This prevents runtime errors due to invalid input types.
+*/
+
 // Given the available times in the meetings collection, and the availableTimes
 // of a single user,
 // return another availableTimes array which contains the times where available times and
